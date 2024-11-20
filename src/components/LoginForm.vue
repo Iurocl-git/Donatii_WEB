@@ -32,20 +32,6 @@ const validateForm = async () => {
   // Отправка данных через fetch/axios
   api.post("/", formData)
     .then(response => console.log(response.data))
-    .catch(error => console.error(error));
-  // try {
-  //   const response = api.post("/", formData)
-  //     .then(response => console.log(response.data))
-  //     .catch(error => console.error(error));
-  //
-  //   if (!response.ok) {
-  //     console.error("Ошибка отправки формы:", response.statusText);
-  //   } else {
-  //     console.log("Данные успешно отправлены!");
-  //   }
-  // } catch (error) {
-  //   console.error("Ошибка при отправке:", error);
-  // }
 };
 
 watch(

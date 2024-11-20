@@ -1,10 +1,12 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, reactive, watch } from "vue";
 import { loadStripe } from "@stripe/stripe-js";
-import api from "@/API/axios.js"; // Импорт вашего API
+import api from "@/API/axios.js";
+import CustomButton from "@/components/custom-button.vue";
+import CustomInput from "@/components/custom-input.vue";
 
 // Инициализация Stripe
-const stripePromise = loadStripe("your-publishable-key"); // Замените на ваш публичный ключ Stripe
+const stripePromise = loadStripe("your-publishable-key"); // Вставьте ваш публичный ключ Stripe
 
 // Состояние
 const paymentType = ref("one-time"); // "one-time" или "subscription"
@@ -16,6 +18,26 @@ const successMessage = ref(null);
 const cardElement = ref(null);
 const elements = ref(null);
 
+// Данные формы и их валидация
+const formData = ref({
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+});
+
+const validationState = reactive({
+  isEmailValid: false,
+  isFirstNameValid: false,
+  isLastNameValid: false,
+  isPhoneValid: false,
+  isValid: false, // Глобальный флаг валидности всей формы
+});
+
+const nameRegex = /^(?!\s*$)[a-zA-Zа-яА-ЯёЁ]{1,20}$/;
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const phoneRegex = /^\+?[1-9]\d{0,2}[-\s]?(\(\d{1,4}\)[-\s]?)?\d{1,10}([-\\s]?\d{1,10}){0,4}$/;
+
 // Функция для обработки платежа
 const handleSubmit = async () => {
   errorMessage.value = null;
@@ -26,15 +48,21 @@ const handleSubmit = async () => {
     return;
   }
 
+  if (!validationState.isValid) {
+    errorMessage.value = "Форма содержит ошибки.";
+    return;
+  }
+
   isProcessing.value = true;
 
   try {
-    // 1. Создаём Payment Method через Stripe Elements
+    // Создаём Payment Method через Stripe Elements
     const { error, paymentMethod } = await stripe.createPaymentMethod({
       type: "card",
       card: cardElement.value,
       billing_details: {
-        name: "Test User", // Здесь можно указать имя пользователя
+        name: `${formData.value.firstName} ${formData.value.lastName}`,
+        email: formData.value.email,
       },
     });
 
@@ -43,13 +71,12 @@ const handleSubmit = async () => {
       return;
     }
 
-    // 2. Разовый платёж или подписка
     if (paymentType.value === "one-time") {
-      // Обработка разового платежа
+      // Разовый платёж
       const paymentIntentResponse = await api.post("/pay", {
-        amount: 1000, // Сумма в центах
+        amount: 1000,
         currency: "USD",
-        paymentMethodId: paymentMethod.id, // ID платёжного метода
+        paymentMethodId: paymentMethod.id,
       });
 
       const { clientSecret } = paymentIntentResponse.data;
@@ -62,11 +89,11 @@ const handleSubmit = async () => {
 
       successMessage.value = "Разовый платёж успешно завершён!";
     } else if (paymentType.value === "subscription") {
-      // Обработка подписки
+      // Подписка
       const subscriptionResponse = await api.post("/create-subscription", {
-        paymentMethodId: paymentMethod.id, // ID платёжного метода
-        customerName: "Test User",
-        customerEmail: "test@example.com",
+        paymentMethodId: paymentMethod.id,
+        customerName: `${formData.value.firstName} ${formData.value.lastName}`,
+        customerEmail: formData.value.email,
       });
 
       const { clientSecret, status } = subscriptionResponse.data;
@@ -89,7 +116,7 @@ const handleSubmit = async () => {
   }
 };
 
-// Инициализация Stripe Elements при монтировании компонента
+// Инициализация Stripe Elements
 onMounted(async () => {
   const stripe = await stripePromise;
 
@@ -99,107 +126,126 @@ onMounted(async () => {
   }
 
   elements.value = stripe.elements();
-
-  // Создаём и монтируем элементы для ввода данных карты
   cardElement.value = elements.value.create("card");
   cardElement.value.mount("#card-element");
 });
+
+// Автоматическая проверка валидности формы
+watch(
+  () => ({
+    isEmailValid: validationState.isEmailValid,
+    isFirstNameValid: validationState.isFirstNameValid,
+    isLastNameValid: validationState.isLastNameValid,
+    isPhoneValid: validationState.isPhoneValid,
+  }),
+  (newState) => {
+    validationState.isValid =
+      newState.isEmailValid &&
+      newState.isFirstNameValid &&
+      newState.isLastNameValid &&
+      newState.isPhoneValid;
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
-  <div class="payment-form">
-    <h1>Оплата</h1>
-    <form @submit.prevent="handleSubmit">
-      <!-- Выбор типа платежа -->
-      <label for="payment-type" class="form-label">Тип платежа:</label>
-      <select id="payment-type" v-model="paymentType" class="payment-type-select">
-        <option value="one-time">Разовый платёж</option>
-        <option value="subscription">Подписка (ежемесячно)</option>
-      </select>
+  <form class="login_container col-5" @submit.prevent="handleSubmit">
+    <h1 class="login_title">Введите ваши данные</h1>
 
-      <!-- Поле для ввода данных карты -->
-      <label for="card-element" class="form-label">Данные карты:</label>
-      <div id="card-element" class="stripe-element"></div>
-      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    <!-- Поля формы -->
+    <custom-input
+      label="Фамилия"
+      :regex="nameRegex"
+      @valid="validationState.isLastNameValid = $event"
+      @input="formData.lastName = $event"
+    />
+    <custom-input
+      label="Имя"
+      :regex="nameRegex"
+      @valid="validationState.isFirstNameValid = $event"
+      @input="formData.firstName = $event"
+    />
+    <custom-input
+      label="Email"
+      :regex="emailRegex"
+      @valid="validationState.isEmailValid = $event"
+      @input="formData.email = $event"
+    />
+    <custom-input
+      label="Телефон"
+      :regex="phoneRegex"
+      @valid="validationState.isPhoneValid = $event"
+      @input="formData.phone = $event"
+    />
 
-      <!-- Кнопка для отправки формы -->
-      <button :disabled="isProcessing" class="submit-button">
-        {{ isProcessing ? "Обработка..." : paymentType === "one-time" ? "Оплатить" : "Оформить подписку" }}
-      </button>
-    </form>
+    <!-- Выбор типа платежа -->
+    <label for="payment-type" class="form-label">Тип платежа:</label>
+    <select id="payment-type" v-model="paymentType" class="payment-type-select">
+      <option value="one-time">Разовый платёж</option>
+      <option value="subscription">Подписка (ежемесячно)</option>
+    </select>
 
-    <!-- Сообщение об успешной оплате -->
+    <!-- Поле для ввода данных карты -->
+    <label for="card-element" class="form-label">Данные карты:</label>
+    <div id="card-element" class="stripe-element"></div>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+
+    <!-- Кнопка отправки -->
+    <custom-button
+      :label="isProcessing ? 'Обработка...' : paymentType === 'one-time' ? 'Оплатить' : 'Оформить подписку'"
+      variant="primary"
+      type="submit"
+      :disabled="!validationState.isValid || isProcessing"
+      class="submit-button"
+    />
+
     <p v-if="successMessage" class="success">{{ successMessage }}</p>
-  </div>
+  </form>
 </template>
 
 <style scoped>
-.payment-form {
-  max-width: 400px;
+.login_container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 600px;
   margin: 0 auto;
-  padding: 20px;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  font-family: Arial, sans-serif;
+  background-color: navajowhite;
+  padding: 20px 30px;
+  border-radius: 20px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
 }
 
-h1 {
-  text-align: center;
-  font-size: 24px;
+.login_title {
+  font-size: 30px;
   margin-bottom: 20px;
+  text-align: center;
 }
 
-.form-label {
-  font-size: 14px;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.payment-type-select {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
+.payment-type-select,
 .stripe-element {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: white;
-  margin-bottom: 16px;
-}
-
-button.submit-button {
   width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-button.submit-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+  margin-bottom: 16px;
 }
 
 .error {
   color: red;
-  font-size: 14px;
   margin-top: 10px;
 }
 
 .success {
   color: green;
-  font-size: 14px;
   margin-top: 10px;
-  text-align: center;
+}
+
+.custom-input {
+  width: 100%; /* Поля ввода занимают всю ширину контейнера */
+  margin-bottom: 16px; /* Отступ между элементами */
+}
+
+.custom-button {
+  margin-top: 20px; /* Отступ сверху для кнопки */
+  align-self: center; /* Центрируем кнопку отдельно */
 }
 </style>
