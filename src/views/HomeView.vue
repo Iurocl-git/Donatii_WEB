@@ -1,6 +1,7 @@
 <script setup>
 import AboutUs from "@/components/AboutUs.vue";
 import LoginForm from "@/components/LoginForm.vue";
+import PaymentForm from "@/components/PaymentForm.vue";
 </script>
 
 
@@ -10,6 +11,8 @@ import LoginForm from "@/components/LoginForm.vue";
       <p>Raspandeste iubirea prin net! Salveaza viata!</p>
     </div>
     <AboutUs class="about_us col-8"/>
+
+    <PaymentForm/>
 
     <LoginForm class="login_form"/>
 

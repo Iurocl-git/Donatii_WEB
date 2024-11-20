@@ -13,8 +13,8 @@
 <style scoped>
   footer {
     position: static;
-    left:0px;
-    bottom:0px;
+    left:0;
+    bottom:0;
     min-height:150px;
     margin-top: 20px;
   }

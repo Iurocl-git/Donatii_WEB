@@ -72,20 +72,24 @@ watch(
       <h1 class="login_title">Intoduceti datele dumneavoastra</h1>
       <custom-input label="Nume" value=""
                     :regex="nameRegex"
+                    type="lastname"
                     @valid="validationState.isLastNameValid = $event"
                     @input="formData.lastName = $event"
       />
       <custom-input label="Prenume" value=""
                     :regex="nameRegex"
+                    type="firstname"
                     @valid="validationState.isFirstNameValid = $event"
                     @input="formData.firstName = $event"
       />
       <custom-input label="Email" value=""
                     :regex="emailRegex"
+                    type="email"
                     @valid="validationState.isEmailValid = $event"
                     @input="formData.email = $event"
       />
       <custom-input label="Numarul de telefon" value=""
+                    type="phone"
                     :regex="phoneRegex"
                     @valid="validationState.isPhoneValid = $event"
                     @input="formData.phone = $event"

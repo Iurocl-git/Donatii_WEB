@@ -4,6 +4,10 @@ import { ref, watch, computed } from "vue";
 const props = defineProps({
   label: String,
   value: String,
+  type: {
+    type: String,
+    default: "",
+  },
   regex: {
     type: RegExp,
     required: true,
@@ -44,6 +48,7 @@ const name = computed(() => props.label?.toLowerCase() || "");
       :name="name"
       v-model="inputValue"
       @input="handleInput"
+      :type="type"
       class="custom-input-field"
       :class="{ 'input-error': showError }"
     />

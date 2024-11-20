@@ -21,11 +21,11 @@ const props = defineProps({
 
 <template>
   <button
-    :class="['custom-button', variant, { disabled }]"
-    :type="type"
-    :disabled="disabled"
+    :class="['custom-button', props.variant, { disabled }]"
+    :type="props.type"
+    :disabled="props.disabled"
   >
-    {{ label }}
+    {{ props.label }}
   </button>
 </template>
 
