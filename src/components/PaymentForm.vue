@@ -1,94 +1,134 @@
 <script setup>
-import {ref} from "vue";
-import {loadStripe} from "@stripe/stripe-js";
+import { ref, onMounted } from "vue";
+import { loadStripe } from "@stripe/stripe-js";
+import api from "@/API/axios.js"; // Импорт вашего API
 
-// Подключаем публичный ключ Stripe
-const stripePromise = loadStripe("your-publishable-key");
+// Инициализация Stripe
+const stripePromise = loadStripe("your-publishable-key"); // Замените на ваш публичный ключ Stripe
 
-// Локальное состояние
-const cardholderName = ref("");
-const email = ref("");
+// Состояние
+const paymentType = ref("one-time"); // "one-time" или "subscription"
 const errorMessage = ref(null);
 const isProcessing = ref(false);
 const successMessage = ref(null);
-const stripeError = ref(null);
 
+// Ссылки на Stripe Elements
+const cardElement = ref(null);
+const elements = ref(null);
+
+// Функция для обработки платежа
 const handleSubmit = async () => {
-  if (!cardholderName.value || !email.value) {
-    errorMessage.value = "Пожалуйста, заполните все поля.";
-    return;
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
-    errorMessage.value = "Введите корректный email.";
-    return;
-  }
+  errorMessage.value = null;
 
   const stripe = await stripePromise;
   if (!stripe) {
-    stripeError.value = "Ошибка инициализации Stripe.";
-    return;
-  }
-
-  // Получаем элемент карты
-  const cardElement = stripe.elements().getElement("card");
-
-  if (!cardElement) {
-    stripeError.value = "Элемент карты не найден.";
+    errorMessage.value = "Ошибка инициализации Stripe.";
     return;
   }
 
   isProcessing.value = true;
 
   try {
-    // Создаем платежный метод
-    const {error, paymentMethod} = await stripe.createPaymentMethod({
+    // 1. Создаём Payment Method через Stripe Elements
+    const { error, paymentMethod } = await stripe.createPaymentMethod({
       type: "card",
-      card: cardElement,
+      card: cardElement.value,
       billing_details: {
-        name: cardholderName.value,
-        email: email.value,
+        name: "Test User", // Здесь можно указать имя пользователя
       },
     });
 
     if (error) {
-      stripeError.value = error.message;
-    } else {
-      successMessage.value = `Оплата прошла успешно! PaymentMethod ID: ${paymentMethod.id}`;
-      errorMessage.value = null;
+      errorMessage.value = error.message;
+      return;
+    }
+
+    // 2. Разовый платёж или подписка
+    if (paymentType.value === "one-time") {
+      // Обработка разового платежа
+      const paymentIntentResponse = await api.post("/pay", {
+        amount: 1000, // Сумма в центах
+        currency: "USD",
+        paymentMethodId: paymentMethod.id, // ID платёжного метода
+      });
+
+      const { clientSecret } = paymentIntentResponse.data;
+
+      const confirmResult = await stripe.confirmCardPayment(clientSecret);
+      if (confirmResult.error) {
+        errorMessage.value = confirmResult.error.message;
+        return;
+      }
+
+      successMessage.value = "Разовый платёж успешно завершён!";
+    } else if (paymentType.value === "subscription") {
+      // Обработка подписки
+      const subscriptionResponse = await api.post("/create-subscription", {
+        paymentMethodId: paymentMethod.id, // ID платёжного метода
+        customerName: "Test User",
+        customerEmail: "test@example.com",
+      });
+
+      const { clientSecret, status } = subscriptionResponse.data;
+
+      if (status === "requires_action") {
+        const confirmResult = await stripe.confirmCardPayment(clientSecret);
+        if (confirmResult.error) {
+          errorMessage.value = confirmResult.error.message;
+          return;
+        }
+      }
+
+      successMessage.value = "Подписка успешно оформлена!";
     }
   } catch (err) {
-    stripeError.value = "Ошибка при создании платежного метода.";
+    errorMessage.value = "Ошибка при обработке платежа.";
     console.error(err);
   } finally {
     isProcessing.value = false;
   }
 };
+
+// Инициализация Stripe Elements при монтировании компонента
+onMounted(async () => {
+  const stripe = await stripePromise;
+
+  if (!stripe) {
+    errorMessage.value = "Ошибка инициализации Stripe.";
+    return;
+  }
+
+  elements.value = stripe.elements();
+
+  // Создаём и монтируем элементы для ввода данных карты
+  cardElement.value = elements.value.create("card");
+  cardElement.value.mount("#card-element");
+});
 </script>
 
 <template>
   <div class="payment-form">
-    <h1>Оплата картой</h1>
+    <h1>Оплата</h1>
     <form @submit.prevent="handleSubmit">
-      <label>
-        Имя владельца карты:
-        <input v-model="cardholderName" type="text" placeholder="Иван Иванов"/>
-      </label>
+      <!-- Выбор типа платежа -->
+      <label for="payment-type" class="form-label">Тип платежа:</label>
+      <select id="payment-type" v-model="paymentType" class="payment-type-select">
+        <option value="one-time">Разовый платёж</option>
+        <option value="subscription">Подписка (ежемесячно)</option>
+      </select>
 
-      <label>
-        Email:
-        <input v-model="email" type="email" placeholder="example@mail.com"/>
-      </label>
+      <!-- Поле для ввода данных карты -->
+      <label for="card-element" class="form-label">Данные карты:</label>
+      <div id="card-element" class="stripe-element"></div>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-      <div id="card-element"></div>
-
-      <button :disabled="isProcessing">
-        {{ isProcessing ? "Обработка..." : "Оплатить" }}
+      <!-- Кнопка для отправки формы -->
+      <button :disabled="isProcessing" class="submit-button">
+        {{ isProcessing ? "Обработка..." : paymentType === "one-time" ? "Оплатить" : "Оформить подписку" }}
       </button>
     </form>
 
-    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-    <p v-if="stripeError" class="error">{{ stripeError }}</p>
+    <!-- Сообщение об успешной оплате -->
     <p v-if="successMessage" class="success">{{ successMessage }}</p>
   </div>
 </template>
@@ -100,46 +140,66 @@ const handleSubmit = async () => {
   padding: 20px;
   border-radius: 8px;
   background-color: #f9f9f9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
 }
 
-label {
+h1 {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.form-label {
+  font-size: 14px;
+  margin-bottom: 8px;
   display: block;
-  margin-bottom: 10px;
 }
 
-input {
+.payment-type-select {
   width: 100%;
-  padding: 10px;
-  margin: 5px 0 15px;
+  padding: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
 
-button {
+.stripe-element {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  margin-bottom: 16px;
+}
+
+button.submit-button {
   width: 100%;
   padding: 12px;
+  font-size: 16px;
   background-color: #4caf50;
   color: white;
-  font-size: 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s ease;
 }
 
-button:disabled {
+button.submit-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
 
 .error {
   color: red;
+  font-size: 14px;
   margin-top: 10px;
 }
 
 .success {
   color: green;
+  font-size: 14px;
   margin-top: 10px;
+  text-align: center;
 }
 </style>

@@ -2,14 +2,14 @@
 import {reactive, ref, watch} from "vue";
 import CustomInput from "@/components/custom-input.vue";
 import CustomButton from "@/components/custom-button.vue";
+import api from "@/API/axios.js"
 const formData = ref({
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: ""
+  firstName: "ioan",
+  lastName: "motres",
+  email: "motres@gmail.com",
+  phone: "3432"
 });
 
-const isValid = ref(false);
 const validationState = reactive({
   isEmailValid: false,
   isFirstNameValid: false,
@@ -18,34 +18,34 @@ const validationState = reactive({
   isValid: false, // Глобальный флаг валидности всей формы
 });
 
-const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const nameRegex = /^(?!\s*$)[a-zA-Zа-яА-ЯёЁ]{1,20}$/;
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const phoneRegex = /^\+?[1-9]\d{0,2}[-\s]?(\(\d{1,4}\)[-\s]?)?\d{1,10}([-\\s]?\d{1,10}){0,4}$/;
 
 const validateForm = async () => {
-  if (!isValid.value) {
+  if (!validationState.isValid) {
     console.log("Форма содержит ошибки.");
+    console.log(validationState);
     return;
   }
 
   // Отправка данных через fetch/axios
-  try {
-    const response = await fetch("/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData.value),
-    });
-
-    if (!response.ok) {
-      console.error("Ошибка отправки формы:", response.statusText);
-    } else {
-      console.log("Данные успешно отправлены!");
-    }
-  } catch (error) {
-    console.error("Ошибка при отправке:", error);
-  }
+  api.post("/", formData)
+    .then(response => console.log(response.data))
+    .catch(error => console.error(error));
+  // try {
+  //   const response = api.post("/", formData)
+  //     .then(response => console.log(response.data))
+  //     .catch(error => console.error(error));
+  //
+  //   if (!response.ok) {
+  //     console.error("Ошибка отправки формы:", response.statusText);
+  //   } else {
+  //     console.log("Данные успешно отправлены!");
+  //   }
+  // } catch (error) {
+  //   console.error("Ошибка при отправке:", error);
+  // }
 };
 
 watch(
@@ -97,7 +97,7 @@ watch(
       <custom-button label="Submit"
                      variant="primary"
                      type="submit"
-                     :disabled="!isValid"
+                     :disabled="!validationState.isValid"
       />
 
 <!--      <input type="submit" value="Login" @click.stop.prevent="() => validateForm(formData)">-->
