@@ -150,8 +150,8 @@ watch(
 </script>
 
 <template>
-  <form class="login_container col-5" @submit.prevent="handleSubmit">
-    <h1 class="login_title">Введите ваши данные</h1>
+  <form class="form_container col-6" @submit.prevent="handleSubmit">
+    <h1 class="form_title">Введите ваши данные</h1>
 
     <!-- Поля формы -->
     <custom-input
@@ -179,17 +179,27 @@ watch(
       @input="formData.phone = $event"
     />
 
-    <!-- Выбор типа платежа -->
-    <label for="payment-type" class="form-label">Тип платежа:</label>
-    <select id="payment-type" v-model="paymentType" class="payment-type-select">
-      <option value="one-time">Разовый платёж</option>
-      <option value="subscription">Подписка (ежемесячно)</option>
-    </select>
+<!--    <div class="col-12">-->
+      <!-- Выпадающий список -->
+      <label class="custom-input" for="payment-type">
+        Тип платежа:
+        <select v-model="paymentType" id="payment-type" class="custom-dropdown">
+          <option value="one-time">Разовый платёж</option>
+          <option value="subscription">Подписка (ежемесячно)</option>
+        </select>
+      </label>
 
-    <!-- Поле для ввода данных карты -->
-    <label for="card-element" class="form-label">Данные карты:</label>
-    <div id="card-element" class="stripe-element"></div>
-    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+      <!-- Поле для данных карты -->
+      <div class="custom-input">
+        <label for="card-element">
+          Данные карты:
+        </label>
+        <div id="card-element" class="custom-card-input"></div>
+      </div>
+
+
+      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+<!--    </div>-->
 
     <!-- Кнопка отправки -->
     <custom-button
@@ -205,7 +215,7 @@ watch(
 </template>
 
 <style scoped>
-.login_container {
+.form_container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -217,16 +227,66 @@ watch(
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
 }
 
-.login_title {
+.form_title {
   font-size: 30px;
   margin-bottom: 20px;
   text-align: center;
 }
-
-.payment-type-select,
-.stripe-element {
-  width: 100%;
+.custom-input {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   margin-bottom: 16px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  max-width: 400px;
+}
+
+.custom-dropdown {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  background-color: #f9f9f9;
+  width: 100%;
+  appearance: none; /* Убираем стандартные стрелки браузера */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23aaa' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+.custom-dropdown:hover {
+  border-color: #888;
+}
+
+.custom-dropdown:focus {
+  border-color: #43a3d9;
+  box-shadow: 0 0 4px rgb(52, 127, 166);
+}
+
+/* Поле ввода данных карты (Stripe Elements) */
+.custom-card-input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  width: 100%;
+}
+
+/* Hover и Focus для Card Input */
+.custom-card-input:hover {
+  border-color: #888;
+}
+
+.custom-card-input:focus-within {
+  border-color: #43a3d9;
+  box-shadow: 0 0 4px rgb(52, 127, 166);
 }
 
 .error {
@@ -241,11 +301,17 @@ watch(
 
 .custom-input {
   width: 100%; /* Поля ввода занимают всю ширину контейнера */
-  margin-bottom: 16px; /* Отступ между элементами */
 }
 
 .custom-button {
   margin-top: 20px; /* Отступ сверху для кнопки */
-  align-self: center; /* Центрируем кнопку отдельно */
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .custom-input {
+    align-items: center;
+    text-align: center;
+  }
 }
 </style>
