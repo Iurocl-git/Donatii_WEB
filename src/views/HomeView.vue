@@ -12,9 +12,9 @@ import PaymentForm from "@/components/PaymentForm.vue";
     </div>
     <AboutUs class="about_us col-8"/>
 
-    <PaymentForm/>
+    <PaymentForm class="pay_form"/>
 
-    <LoginForm class="login_form"/>
+<!--    <LoginForm class="login_form"/>-->
 
   </main>
 </template>
@@ -33,7 +33,7 @@ import PaymentForm from "@/components/PaymentForm.vue";
   margin-left: auto;
   margin-right: auto;
 }
-.login_form {
+.pay_form {
   //margin-left: auto;
   //margin-right: auto;
   margin: 80px auto 0 auto;
