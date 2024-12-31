@@ -5,127 +5,109 @@ import api from '@/API/axios.js'
 import CustomButton from '@/components/custom-button.vue'
 import CustomInput from '@/components/custom-input.vue'
 
-// Инициализация Stripe
+// Initialize Stripe
 const stripePromise = loadStripe(
   'pk_test_51QNEJ0CxCswpWX46PKgphGAEgQIrNafMF2bIfEMZIqc9C1Ih5IOmRg9EdM50zXXGZIdzi34rvHo7JkVRkWI7RvwG00fyY0Byfn',
-) // Вставьте ваш публичный ключ Stripe
+) // Insert your Stripe public key
 
-// Состояние
-const paymentType = ref('one-time') // "one-time" или "subscription"
+// State
+const paymentType = ref('one-time') // "one-time" or "subscription"
 const errorMessage = ref(null)
 const isProcessing = ref(false)
 const successMessage = ref(null)
 
-// Ссылки на Stripe Elements
+// Stripe Elements
 const cardElement = ref(null)
 const elements = ref(null)
 
-// Данные формы и их валидация
+// Form data and validation
 const formData = ref({
   firstName: '',
   lastName: '',
   email: '',
   phone: '',
 })
-// const stripe = computed(async () => {
-//   return await stripePromise;
-// })
+
 const validationState = reactive({
   isEmailValid: false,
   isFirstNameValid: false,
   isLastNameValid: false,
   isPhoneValid: false,
   isCardValid: false,
-  isValid: false, // Глобальный флаг валидности всей формы
+  isValid: false, // Global form validity
 })
 
-const nameRegex = /^(?!\s*$)[a-zA-Zа-яА-ЯёЁ]{1,20}$/
+const nameRegex = /^(?!\s*$)[a-zA-Z]{1,20}$/
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-const phoneRegex = /^\+?[1-9]\d{0,2}[-\s]?(\(\d{1,4}\)[-\s]?)?\d{1,10}([-\\s]?\d{1,10}){0,4}$/
+const phoneRegex = /^\+?[1-9]\d{1,14}$/
 
-// Функция для обработки платежа
+// Payment handler
 const handleSubmit = async () => {
   errorMessage.value = null
 
   const stripe = await stripePromise
   if (!stripe) {
-    errorMessage.value = 'Ошибка инициализации Stripe.'
+    errorMessage.value = 'Stripe initialization error.'
     return
   }
 
   if (!validationState.isValid) {
-    errorMessage.value = 'Форма содержит ошибки.'
+    errorMessage.value = 'The form contains errors.'
     return
   }
 
   isProcessing.value = true
 
-  try {
-    // Создаём Payment Method через Stripe Elements
-    // console.log("start method");
+  const billingDetails = {
+    name: `${formData.value.firstName} ${formData.value.lastName}`,
+    email: formData.value.email,
+    phone: formData.value.phone,
+  }
 
+  try {
     const { error, paymentMethod } = await stripe.createPaymentMethod({
       type: 'card',
       card: cardElement.value,
-      billing_details: {
-        name: `${formData.value.firstName} ${formData.value.lastName}`,
-        email: formData.value.email,
-        phone: formData.value.phone,
-      },
+      billing_details: billingDetails,
     })
 
     if (error) {
-      // console.log("error");
       errorMessage.value = error.message
       return
     }
 
-    const billingDetails = {
-      name: `${formData.value.firstName} ${formData.value.lastName}`,
-      email: formData.value.email,
-      phone: formData.value.phone,
-    }
-
     if (paymentType.value === 'one-time') {
-      // Разовый платёж
       const paymentIntentResponse = await api.post('/handle_payment/pay', {
         amount: 1000,
         currency: 'usd',
         paymentMethodId: paymentMethod.id,
-        // payment_method_types: ["card"],
       })
 
       const { clientSecret } = paymentIntentResponse.data
 
-      // console.log(paymentIntentResponse);
       const confirmResult = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: cardElement.value, // Ваш Stripe Element
+          card: cardElement.value,
           billing_details: billingDetails,
         },
       })
       if (confirmResult.error) {
-        // console.log("error confirm");
         errorMessage.value = confirmResult.error.message
         return
       }
 
-      successMessage.value = 'Разовый платёж успешно завершён!'
+      successMessage.value = 'One-time payment successfully completed!'
     } else if (paymentType.value === 'subscription') {
-      // Подписка
       const subscriptionResponse = await api.post('/handle_payment/create-subscription', {
         paymentMethodId: paymentMethod.id,
         customerName: billingDetails.name,
         customerEmail: billingDetails.email,
         customerPhone: billingDetails.phone,
-        priceId: 'price_1QONFqCxCswpWX46QILwtb8W', // Замените на ID вашего плана из Stripe Dashboard
+        priceId: 'price_1QONFqCxCswpWX46QILwtb8W',
       })
-      // console.log("subscriptionResponse.data");
       const { clientSecret, status } = subscriptionResponse.data
 
       if (status === 'requires_action') {
-        // console.log("requires_action");
-
         const confirmResult = await stripe.confirmCardPayment(clientSecret)
         if (confirmResult.error) {
           errorMessage.value = confirmResult.error.message
@@ -133,20 +115,20 @@ const handleSubmit = async () => {
         }
       }
 
-      successMessage.value = 'Подписка успешно оформлена!'
+      successMessage.value = 'Subscription successfully created!'
     }
   } catch (err) {
-    errorMessage.value = 'Ошибка при обработке платежа.'
+    errorMessage.value = 'Error processing payment.'
     console.error(err)
   } finally {
     isProcessing.value = false
   }
 }
 
+// Validate card
 const validateCard = async (stripe) => {
-  // const stripe = await stripePromise;
   if (!stripe) {
-    errorMessage.value = 'Ошибка инициализации Stripe.'
+    errorMessage.value = 'Stripe initialization error.'
     validationState.isCardValid = false
     return
   }
@@ -160,12 +142,12 @@ const validateCard = async (stripe) => {
   return !error
 }
 
-// Инициализация Stripe Elements
+// Initialize Stripe Elements
 onMounted(async () => {
   const stripe = await stripePromise
 
   if (!stripe) {
-    errorMessage.value = 'Ошибка инициализации Stripe.'
+    errorMessage.value = 'Stripe initialization error.'
     return
   }
 
@@ -174,43 +156,45 @@ onMounted(async () => {
     hidePostalCode: true,
     style: {
       invalid: {
-        color: '#fa755a', // Цвет текста при ошибке
-        iconColor: '#fa755a', // Цвет иконки при ошибке
+        color: '#fa755a',
+        iconColor: '#fa755a',
       },
     },
   })
+
   cardElement.value.on('focus', () => {
     const element = document.querySelector('#card-element')
     if (element && validationState.isCardValid) {
-      element.style.borderColor = '#43a3d9' // Цвет рамки при фокусе
-      element.style.boxShadow = '0 0 4px rgb(52, 127, 166)' // Тень при фокусе
+      element.style.borderColor = '#43a3d9'
+      element.style.boxShadow = '0 0 4px rgb(52, 127, 166)'
     }
   })
 
   cardElement.value.on('blur', () => {
     const element = document.querySelector('#card-element')
     if (element) {
-      element.style.borderColor = '#ccc' // Возвращаем стандартный цвет
-      element.style.boxShadow = 'none' // Убираем тень
+      element.style.borderColor = '#ccc'
+      element.style.boxShadow = 'none'
     }
   })
+
   cardElement.value.on('change', async (event) => {
-    await validateCard(stripe) // Проверяем карту при изменении
+    await validateCard(stripe)
     const element = document.querySelector('#card-element')
     if (event.error) {
-      element.style.borderColor = '#fa755a' // Цвет рамки при ошибке
+      element.style.borderColor = '#fa755a'
       element.style.boxShadow = 'none'
     } else if (!event.error && event.complete) {
-      element.style.borderColor = '#43a3d9' // Цвет рамки при успешном вводе
+      element.style.borderColor = '#43a3d9'
     } else {
-      element.style.borderColor = '#ccc' // Стандартный цвет рамки
+      element.style.borderColor = '#ccc'
     }
   })
 
   cardElement.value.mount('#card-element')
 })
 
-// Автоматическая проверка валидности формы
+// Automatic form validation
 watch(
   () => ({
     isEmailValid: validationState.isEmailValid,
@@ -233,17 +217,17 @@ watch(
 
 <template>
   <form class="form_container col-6" @submit.prevent="handleSubmit">
-    <h1 class="form_title">Введите ваши данные</h1>
+    <h1 class="form_title">Enter your details</h1>
 
-    <!-- Поля формы -->
+    <!-- Form fields -->
     <custom-input
-      label="Фамилия"
+      label="Last Name"
       :regex="nameRegex"
       @valid="validationState.isLastNameValid = $event"
       @input="formData.lastName = $event"
     />
     <custom-input
-      label="Имя"
+      label="First Name"
       :regex="nameRegex"
       @valid="validationState.isFirstNameValid = $event"
       @input="formData.firstName = $event"
@@ -255,40 +239,29 @@ watch(
       @input="formData.email = $event"
     />
     <custom-input
-      label="Телефон"
+      label="Phone"
       :regex="phoneRegex"
       @valid="validationState.isPhoneValid = $event"
       @input="formData.phone = $event"
     />
 
-    <!--    <div class="col-12">-->
-    <!-- Выпадающий список -->
     <label class="custom-input" for="payment-type">
-      Тип платежа:
+      Payment Type:
       <select v-model="paymentType" id="payment-type" class="custom-dropdown">
-        <option value="one-time">Разовый платёж</option>
-        <option value="subscription">Подписка (ежемесячно)</option>
+        <option value="one-time">One-time Payment</option>
+        <option value="subscription">Subscription (monthly)</option>
       </select>
     </label>
 
-    <!-- Поле для данных карты -->
     <div class="custom-input">
-      <label for="card-element"> Данные карты: </label>
+      <label for="card-element">Card Details:</label>
       <div id="card-element" class="custom-card-input"></div>
     </div>
 
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-    <!--    </div>-->
 
-    <!-- Кнопка отправки -->
     <custom-button
-      :label="
-        isProcessing
-          ? 'Обработка...'
-          : paymentType === 'one-time'
-            ? 'Оплатить'
-            : 'Оформить подписку'
-      "
+      :label="isProcessing ? 'Processing...' : paymentType === 'one-time' ? 'Pay Now' : 'Subscribe'"
       variant="primary"
       type="submit"
       :disabled="!validationState.isValid || isProcessing"
