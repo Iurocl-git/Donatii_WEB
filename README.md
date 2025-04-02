@@ -1,35 +1,67 @@
-# donatii
+# Donatii - Stripe Integration Test Project
 
-This template should help get you started developing with Vue 3 in Vite.
+## About
+Donatii is a test project created to explore and test the integration of the Stripe payment system in a Vue 3 application. The project demonstrates the implementation of both one-time payments and subscriptions through Stripe, as well as HTTPS/TLS setup for secure payment processing.
 
-## Recommended IDE Setup
+## Main Features
+- Stripe integration for payment processing
+- One-time payment implementation
+- Subscription setup through Stripe
+- Secure payment processing via HTTPS/TLS
+- Test mode for safe payment testing
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Technologies
+- Vue 3
+- Vite
+- Vue Router
+- Pinia (for state management)
+- Stripe.js
+- HTTPS/TLS
 
-## Customize configuration
+## Development Setup
 
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
+### Dependencies Installation
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
-
+### Development Server
 ```sh
 npm run dev
 ```
+The application will be available at `http://localhost:5173`
 
-### Compile and Minify for Production
-
+### Production Build
 ```sh
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
-
+### Code Linting
 ```sh
 npm run lint
 ```
+
+## Project Structure
+```
+donatii/
+├── src/
+│   ├── assets/        # Static resources
+│   ├── components/    # Vue components
+│   ├── views/         # Application pages
+│   ├── router/        # Routing configuration
+│   ├── stores/        # Pinia stores
+│   ├── API/          # Stripe API integration
+│   └── App.vue        # Root component
+├── public/            # Public files
+└── index.html         # Entry point
+```
+
+## Note
+This project is created solely for testing and learning Stripe integration. For production use, you need to:
+1. Set up your own Stripe account
+2. Replace test keys with real ones
+3. Configure SSL certificate
+4. Implement additional validation and error handling
+
+## License
+MIT
