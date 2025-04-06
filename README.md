@@ -3,6 +3,9 @@
 ## About
 Donatii is a test project created to explore and test the integration of the Stripe payment system in a Vue 3 application. The project demonstrates the implementation of both one-time payments and subscriptions through Stripe, as well as HTTPS/TLS setup for secure payment processing.
 
+## Server implemenatation
+[Link to server repository](https://github.com/Iurocl-git/Donatii_WEB_Server)
+
 ## Main Features
 - Stripe integration for payment processing
 - One-time payment implementation
